@@ -1,6 +1,6 @@
 import bitarray as ba 
 data = ba.bitarray(endian='little')  
-data.frombytes('Secret message!'.encode()) 
+data.frombytes('Secret message!!'.encode()) 
 
 def parity(bitarray):
     print("Original:\t\t\t{}".format(bitarray))
