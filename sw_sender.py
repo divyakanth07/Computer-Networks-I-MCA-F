@@ -1,50 +1,40 @@
 import socket
 
-host = '127.0.0.1' 
-port = 12345
+class SlidSender:
+    def __init__(self, host='127.0.0.1', port=12345):
+        self.host = host
+        self.port = port
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-def sliding_window_sender():
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((host, port))
-    server_socket.listen(1)
-    print("Server is listening on port 10...")
-    
-    conn, addr = server_socket.accept()
-    print(f"Connected by {addr}")
-    
-    sbuff = [None] * 8
-    sptr = 0
-    sws = 8
-    
-    try:
-        while True:
-            nf = int(input("Enter the number of frames: "))
-            conn.sendall(str(nf).encode())
-            
-            if nf <= sws - 1:
-                print(f"Enter {nf} messages to be sent")
-                for i in range(nf):
-                    sbuff[sptr] = input()
-                    conn.sendall(sbuff[sptr].encode())
-                    sptr = (sptr + 1) % 8
-                
-                sws -= nf
-                print("Acknowledgment received")
-                ano = int(conn.recv(1024).decode())
-                print(f" for {ano} frames")
-                sws += nf
-            else:
-                print("The number of frames exceeds window size")
-                break
-            
-            ch = input("Do you want to send some more frames: ")
-            conn.sendall(ch.encode())
-            if ch.lower() != "yes":
-                break
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    finally:
+    def send_frames(self, frames):
+        self.socket.bind((self.host, self.port))
+        self.socket.listen(1)
+        print("Waiting for receiver to connect...")
+        conn, _ = self.socket.accept()
+
+        window_size = 8
+        ptr = 0
+
+        while ptr < len(frames):
+            nf = min(window_size, len(frames) - ptr)
+            conn.send(f"{nf}\n".encode())
+
+            for i in range(nf):
+                conn.send(f"{frames[ptr]}\n".encode())
+                print(f"Sent Frame {ptr % 8}: {frames[ptr]}")
+                ptr += 1
+
+            ack = conn.recv(1024).decode().strip()
+            if not ack.isdigit():
+                        print("Invalid or no acknowledgment received.")
+                        break
+
+            print(f"Acknowledgment received for Frame {int(ack) - 1}")            
+            conn.send(b"yes\n")
+
         conn.close()
-        server_socket.close()
 
-sliding_window_sender()
+if __name__ == "__main__":
+    sender = SlidSender()
+    frames_to_send = [f"Frame{i}" for i in range(12)]
+    sender.send_frames(frames_to_send)
